@@ -157,6 +157,14 @@ body{
   color:white;
   font-size:18px;
 }
+
+/* شريط تحميل بسيط */
+#loading{
+  text-align:center;
+  color:var(--muted);
+  margin-bottom:10px;
+  font-size:14px;
+}
 </style>
 </head>
 
@@ -164,9 +172,11 @@ body{
 
 <!-- أزرار اللغة والثيم -->
 <div class="top-controls">
-  <button class="ctrl-btn" onclick="toggleLang()">🌐 اللغة</button>
-  <button class="ctrl-btn" onclick="toggleTheme()">🌙 / ☀️</button>
+  <button class="ctrl-btn" onclick="toggleLang()" id="langBtn">🌐 اللغة</button>
+  <button class="ctrl-btn" onclick="toggleTheme()" id="themeBtn">🌙 / ☀️</button>
 </div>
+
+<div id="loading">جاري تحميل البيانات من Google Sheets...</div>
 
 <!-- التبويبات -->
 <div class="card fade">
@@ -182,16 +192,15 @@ body{
 
   <div style="display:flex;align-items:center;gap:20px">
 
-    <div style="width:90px;height:90px;border-radius:50%;overflow:hidden;border:2px solid var(--accent)">
-      <img src="https://i.postimg.cc/wjYvc25m/swrty.jpg" style="width:100%;height:100%;object-fit:cover">
+    <div id="profileImageBox" style="width:90px;height:90px;border-radius:50%;overflow:hidden;border:2px solid var(--accent);display:none">
+      <img id="profileImage" src="" style="width:100%;height:100%;object-fit:cover">
     </div>
 
     <div>
-      <h2 id="nameTxt" style="margin:0;font-size:22px">حمد إبراهيم النفيسة</h2>
-      <div id="jobTxt" style="color:var(--accent);font-size:15px;margin-bottom:6px">طالب موهوب</div>
-      <p id="bioTxt" style="color:var(--muted);font-size:14px;margin:0">
-        طالب موهوب يعيش في رياض الخبراء مهتم بالحاسب
-      </p>
+      <h2 id="nameTxt" style="margin:0;font-size:22px">...</h2>
+      <div id="jobTxt" style="color:var(--accent);font-size:15px;margin-bottom:6px"></div>
+      <p id="bioTxt" style="color:var(--muted);font-size:14px;margin:0"></p>
+      <p id="locationTxt" style="color:var(--muted);font-size:13px;margin-top:6px"></p>
     </div>
 
   </div>
@@ -199,34 +208,19 @@ body{
   <!-- مواقع التواصل -->
   <div class="social-box fade">
     <h3 id="socialTitle" style="margin-bottom:10px;margin-top:20px">مواقع التواصل الاجتماعي</h3>
-
-    <div class="social-item" onclick="window.open('https://twitter.com','_blank')">
-      <div class="social-icon">🐦</div>
-      <div id="twTxt">تويتر</div>
-    </div>
-
-    <div class="social-item" onclick="window.open('https://instagram.com','_blank')">
-      <div class="social-icon">📸</div>
-      <div id="igTxt">إنستغرام</div>
-    </div>
-
-    <div class="social-item" onclick="window.open('https://snapchat.com','_blank')">
-      <div class="social-icon">👻</div>
-      <div id="scTxt">سناب شات</div>
-    </div>
-
+    <div id="socialContainer"></div>
   </div>
 
 </div>
 
 <!-- المهارات -->
-<div id="skills" class="card section-box fade" style="display:none">
+<div id="skills" class="card section-box fade" style=>
   <h2 id="skillsTitle" style="margin-bottom:15px">المهارات التقنية</h2>
   <div id="skillsNew"></div>
 </div>
 
 <!-- المشاريع -->
-<div id="projects" class="card section-box fade" style="display:none">
+<div id="projects" class="card section-box fade" style=>
   <h2 id="projectsTitle" style="margin-bottom:15px">أعمالي المختارة</h2>
   <div id="projectsNew" class="portfolio-grid"></div>
 </div>
@@ -247,6 +241,9 @@ body{
 </div>
 
 <script>
+const API_URL = "YOUR_API_URL_HERE"; // <-- حط هنا رابط الويب آب تبعك
+
+let lang = "ar";
 
 /* التبويبات */
 function showSection(sec){
@@ -257,66 +254,110 @@ function showSection(sec){
   document.getElementById(sec + "Btn").classList.add("active-tab");
 }
 
-/* المهارات */
-function renderSkillsNew(){
+/* تعبئة الرئيسية من sheet (profile) */
+function renderProfile(profileData) {
+    if (!profileData || profileData.length === 0) return;
+
+    const row = profileData[0];
+
+    document.getElementById("nameTxt").textContent = row["name"] || "";
+    document.getElementById("jobTxt").textContent = row["title"] || "";
+    document.getElementById("bioTxt").textContent = row["bio"] || "";
+
+    const imgUrl = row["avatar"];
+    if (imgUrl){
+        const box = document.getElementById("profileImageBox");
+        const img = document.getElementById("profileImage");
+        img.src = imgUrl;
+        box.style.display = "block";
+    }
+}
+/* مواقع التواصل من sheet (social) */
+function renderSocial(socialData){
+  const box = document.getElementById("socialContainer");
+  box.innerHTML = "";
+
+  if (!socialData || socialData.length === 0) return;
+
+  socialData.forEach(item => {
+    const name = item["platform"];
+const url  = item["url"];
+    if (!name || !url) return;
+
+    let icon = "🔗";
+    const n = (name || "").toLowerCase();
+    if (n.includes("x")) icon = "🐦";
+    else if (n.includes("insta")) icon = "📸";
+    else if (n.includes("snap")) icon = "👻";
+    else if (n.includes("tik")) icon = "🎵";
+    else if (n.includes("you")) icon = "▶️";
+    else if (n.includes("whats")) icon = "💬";
+
+    const div = document.createElement("div");
+    div.className = "social-item";
+    div.onclick = () => window.open(url, "_blank");
+    div.innerHTML = `
+      <div class="social-icon">${icon}</div>
+      <div>${name}</div>
+    `;
+    box.appendChild(div);
+  });
+}
+
+/* المهارات من sheet (skills) */
+function renderSkillsNew(skillsData){
   const box = document.getElementById("skillsNew");
   box.innerHTML = "";
 
-  const skills = [
-    {nameAR:"HTML/CSS", nameEN:"HTML/CSS", level:33},
-    {nameAR:"بايثون", nameEN:"Python", level:50},
-    {nameAR:"جافاسكربت", nameEN:"Javascript", level:67},
-    {nameAR:"C++", nameEN:"C++", level:83},
-    {nameAR:"مجالات الاختراق", nameEN:"Hacking domains", level:100}
-  ];
+  if (!skillsData || skillsData.length === 0) return;
 
-  skills.forEach(s=>{
+  skillsData.forEach(s=>{
+    // name | level | category
+    const name = s["name"];
+    const levelText = s["level"]; // مثل lv2, lv3...
+    let percent = 0;
+    if (typeof levelText === "string" && levelText.startsWith("lv")) {
+      const num = parseInt(levelText.replace("lv","")) || 1;
+      // نحول lv1..lv6 إلى نسبة تقريبا:
+      percent = Math.min(100, num * 16 + 10);
+    } else {
+      percent = 50;
+    }
+
     box.innerHTML += `
       <div style="margin-bottom:14px">
-        <div style="font-size:14px;margin-bottom:4px">${lang==="ar"?s.nameAR:s.nameEN} – ${s.level}%</div>
+        <div style="font-size:14px;margin-bottom:4px">${name} – ${percent}%</div>
         <div style="width:100%;height:8px;background:#1e293b;border-radius:6px;overflow:hidden">
-          <div style="width:${s.level}%;height:100%;background:var(--accent)"></div>
+          <div style="width:${percent}%;height:100%;background:var(--accent)"></div>
         </div>
       </div>
     `;
   });
 }
 
-/* المشاريع */
-function renderProjectsNew(){
+/* المشاريع من sheet (portfolio) */
+function renderProjectsNew(projectsData){
   const box = document.getElementById("projectsNew");
   box.innerHTML = "";
 
-  const projects = [
-    {
-      ar:"مشروع الخريطة الذهنية",
-      en:"Mind Map Project",
-      img:"https://i.postimg.cc/mZwXm4DL/lqtt-shasht-2025-12-09-093800.png"
-    },
-    {
-      ar:"مشروع أجيال الحاسب",
-      en:"Computer Generations",
-      img:"https://i.postimg.cc/DfjQWw0r/lqtt-shasht-2025-12-27-164659.png"
-    },
-    {
-      ar:"مشروع السلام عليكم",
-      en:"Salam Project",
-      img:"https://i.postimg.cc/8cH0WQFZ/lqtt-shasht-2025-12-27-164326.png"
-    },
-    {
-      ar:"مشروع برمجة HTML",
-      en:"HTML Coding Project",
-      img:"https://i.postimg.cc/bYtYn6NF/aʿlan-dyw.png"
-    }
-  ];
+  if (!projectsData || projectsData.length === 0) return;
 
-  projects.forEach(p=>{
-    box.innerHTML += `
-      <div class="project fade">
-        <img src="${p.img}">
-        <div class="project-title">${lang==="ar"?p.ar:p.en}</div>
+  projectsData.forEach(p=>{
+    const title = p["title"];
+    const desc  = p["description"] || "";
+    const year  = p["year"] || "";
+    const img   = p["link"] || "";
+
+    const div = document.createElement("div");
+    div.className = "project fade";
+    div.innerHTML = `
+      ${img ? `<img src="${img}" alt="">` : ""}
+      <div class="project-title">${title || ""}</div>
+      <div style="padding:0 10px 10px;font-size:12px;color:var(--muted)">
+        ${year} ${desc ? " – " + desc : ""}
       </div>
     `;
+    box.appendChild(div);
   });
 }
 
@@ -334,36 +375,29 @@ function setupRating(){
   });
 }
 
-/* اللغة */
-let lang = "ar";
-
+/* اللغة (واجهة فقط، البيانات من الشيت تظل بالعربي) */
 function toggleLang(){
   lang = lang==="ar" ? "en" : "ar";
 
   document.documentElement.lang = lang;
   document.documentElement.dir = lang==="ar" ? "rtl" : "ltr";
 
-  document.getElementById("homeBtn").textContent = lang==="ar"?"الرئيسية":"Home";
-  document.getElementById("skillsBtn").textContent = lang==="ar"?"المهارات":"Skills";
+  document.getElementById("homeBtn").textContent     = lang==="ar"?"الرئيسية":"Home";
+  document.getElementById("skillsBtn").textContent   = lang==="ar"?"المهارات":"Skills";
   document.getElementById("projectsBtn").textContent = lang==="ar"?"المشاريع":"Projects";
 
-  document.getElementById("skillsTitle").textContent = lang==="ar"?"المهارات التقنية":"Technical Skills";
-  document.getElementById("projectsTitle").textContent = lang==="ar"?"أعمالي المختارة":"My Projects";
-  document.getElementById("rateTitle").textContent = lang==="ar"?"قيّم الموقع":"Rate the Website";
-  document.getElementById("socialTitle").textContent = lang==="ar"?"مواقع التواصل الاجتماعي":"Social Media";
+  document.getElementById("skillsTitle").textContent   = lang==="ar"?"المهارات التقنية":"Technical Skills";
+  document.getElementById("projectsTitle").textContent = lang==="ar"?"أعمالي المختارة":"My Portfolio";
+  document.getElementById("rateTitle").textContent     = lang==="ar"?"قيّم الموقع":"Rate the Website";
+  document.getElementById("socialTitle").textContent   = lang==="ar"?"مواقع التواصل الاجتماعي":"Social Media";
 
-  document.getElementById("twTxt").textContent = lang==="ar"?"تويتر":"Twitter";
-  document.getElementById("igTxt").textContent = lang==="ar"?"إنستغرام":"Instagram";
-  document.getElementById("scTxt").textContent = lang==="ar"?"سناب شات":"Snapchat";
+  document.getElementById("langBtn").textContent   = lang==="ar" ? "🌐 اللغة" : "🌐 Language";
+  document.getElementById("themeBtn").textContent  = lang==="ar" ? "🌙 / ☀️" : "🌙 / ☀️";
 
-  document.getElementById("nameTxt").textContent = lang==="ar"?"حمد إبراهيم النفيسة":"Hamad Al-Nafisah";
-  document.getElementById("jobTxt").textContent = lang==="ar"?"طالب موهوب":"Talented Student";
-  document.getElementById("bioTxt").textContent = lang==="ar"
-    ?"طالب موهوب يعيش في رياض الخبراء مهتم بالحاسب"
-    :"A talented student living in Riyadh Al-Khabra, interested in computers.";
-
-  renderSkillsNew();
-  renderProjectsNew();
+  const loading = document.getElementById("loading");
+  if (loading){
+    loading.textContent = lang==="ar" ? "جاري تحميل البيانات من Google Sheets..." : "Loading data from Google Sheets...";
+  }
 }
 
 /* الثيم */
@@ -371,15 +405,38 @@ function toggleTheme(){
   document.body.classList.toggle("light");
 }
 
+/* جلب البيانات من Google Sheets */
+async function loadData(){
+  const loading = document.getElementById("loading");
+  try{
+    const res = await fetch("https://script.google.com/macros/s/AKfycbw_VII5r-0j0LE4EPD7c26WewRADbz4rjGMXCnORKpB3Jf8TuFe2HqZL2AZ7yDqtzMA/exec");
+    const data = await res.json();
+
+    if (loading) loading.style.display = "none";
+
+    renderProfile(data.profile);
+    renderSocial(data.social);
+    renderSkillsNew(data.skills);
+    renderProjectsNew(data.portfolio);
+  }catch(e){
+    console.error(e);
+    if (loading){
+      loading.textContent = lang==="ar"
+        ? "تعذر تحميل البيانات. تأكد من إعدادات Google Apps Script."
+        : "Failed to load data. Check Google Apps Script settings.";
+    }
+  }
+}
+
 /* تشغيل */
 function initPage(){
-  renderSkillsNew();
-  renderProjectsNew();
   setupRating();
+  toggleLang(); // لتحديث النصوص حسب اللغة الحالية
+  toggleLang(); // نرجع للعربي كنقطة بدء
+  loadData();
 }
 
 initPage();
-
 </script>
 
 </body>
